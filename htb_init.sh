@@ -121,19 +121,33 @@ mkdir $PATHSET > /dev/null 2>&1
 
 echo "$blue""Downloading dependencies...$reset"
 ## downloading enumeration dependencies
+  ## ffuf
 wget -O "/tmp/subdomains.txt" https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/subdomains-top1million-20000.txt >/dev/null 2>&1
-page_size=$(curl -so /dev/null http://bountyhunter.htb/ -w '%{size_download}')
+page_size=$(curl -so /dev/null "http://"$name".htb/" -w '%{size_download}')
+  ## gobuster
+wget -O "/tmp/directories.txt" https://raw.githubusercontent.com/daviddias/node-dirbuster/master/lists/directory-list-2.3-medium.txt >/dev/null 2>&1
+
 
 ## Enumerating with different tools and scripts
+function add_subs {
+    SUBS=$(grep -w "http://$name.htb/ |" $PATHSET/subdomains.md | cut -d " " -f4 | sed "s/$/."$name".htb/" | tr '\n' ' ')
+    sudo sed -i "s/$name.htb/$name.htb $SUBS/" /etc/hosts
+    echo "$green""subs added to /etc/hosts: "$SUBS$reset
+}
+
+
 echo "$blue""Enumerating...$reset"
 (sudo nmap -sS -sV -sC $ip -oN $PATHSET/nmap.txt > /dev/null && echo -e "$green""\n════════════════════════════════════╣ PORTS AND SERVICES ╠════════════════════════════════════\n$reset" && cat $PATHSET/nmap.txt) &
-(ffuf -w /tmp/subdomains.txt -u "http://"$name".htb/" -H "Host: FUZZ."$name".htb" -fs $page_size -s -o $PATHSET/subdomains.md -of md >/dev/null 2>&1 && echo -e "$green""\n════════════════════════════════════╣ SUBDOMAINS ╠════════════════════════════════════\n$reset" && cat $PATHSET/subdomains.md)
+(ffuf -w /tmp/subdomains.txt -u "http://"$name".htb/" -H "Host: FUZZ."$name".htb" -fs $page_size -s -o $PATHSET/subdomains.md -of md >/dev/null 2>&1 && echo -e "$green""\n════════════════════════════════════╣ SUBDOMAINS ╠════════════════════════════════════\n$reset" && cat $PATHSET/subdomains.md && add_subs;) &
+(gobuster dir -w /tmp/directories.txt -u "http://"$name".htb/" -t 200 -x php,html -o $PATHSET/directories_n_files.txt  >/dev/null 2>&1 && echo -e "$green""\n════════════════════════════════════╣ DIRECTORIES & FILES ╠════════════════════════════════════\n$reset" && cat $PATHSET/directories_n_files.txt)
+
 
 wait $(jobs -p)
 
 ## deleting temporary files
 rm -f "/tmp/subdomains.txt"
+rm -f "/tmp/directories.txt"
 
-echo "$red""done$reset"
+echo -e "$red""\n\ndone$reset"
 
 # alias htb='/home/kali/Desktop/htb_init.sh'
