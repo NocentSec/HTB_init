@@ -1,4 +1,5 @@
 #!/bin/bash
+# alias htb='/home/kali/Desktop/htb_init.sh'
 
 sudo printf "\e[0;2;0;0;0m                             \e[38;2;158;169;188m▄\e[0;2;0;0;0m\e[38;2;158;169;188m▄\e[0;2;0;0;0m\e[38;2;158;169;188m▄\e[0;2;0;0;0m                            \e[0m
 \e[0;2;0;0;0m                          \e[38;2;158;169;188m▄\e[48;2;158;169;188m\e[38;2;0;0;0m▄\e[48;2;158;169;188m\e[38;2;0;0;0m▄\e[0;2;0;0;0m\e[38;2;141;189;248m▄\e[0;2;0;0;0m\e[38;2;141;189;248m▄\e[0;2;0;0;0m\e[38;2;141;189;248m▄\e[48;2;158;169;188m\e[38;2;0;0;0m▄\e[48;2;158;170;192m\e[38;2;78;84;93m▄\e[0;2;0;0;0m\e[38;2;158;169;188m▄\e[0;2;0;0;0m                         \e[0m
@@ -54,100 +55,188 @@ function prompt_continue {
     esac
 }
 
-[ -z $1 ] && { usage; }
+## preps
 
-## check internet connection
-ping -c 1 1.1.1.1 -W 1 >/dev/null && : || (echo -e "$red""Network problems, please check your internet connection.$reset"; prompt_continue;)
+function check_usage {
+
+	[ -z $1 ] && { usage; }
+
+	## check internet connection
+	ping -c 1 1.1.1.1 -W 1 >/dev/null && : || (echo -e "$red""Network problems, please check your internet connection.$reset"; prompt_continue;)
 
 
-## check if valid ip and name
-if [[ $1 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]];
-then
-	ip=$1
-	if [[ $2 =~ [a-zA-Z]+$ ]];
+	## check if valid ip and name
+	if [[ $1 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]];
 	then
-		name=$2
-	else
-		echo "$red""ERR: Please check your input.$reset"
-		usage;
-		exit 1
-	fi
-else
-	if [[ $1 =~ [a-zA-Z]+$ ]];
-	then
-		name=$1
-		if [[ $2 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]];
+		ip=$1
+		if [[ $2 =~ [a-zA-Z]+$ ]];
 		then
-			ip=$2
+			name=$2
 		else
 			echo "$red""ERR: Please check your input.$reset"
 			usage;
 			exit 1
 		fi
 	else
-		echo "$red""ERR: Please check your input.$reset"
-		usage;
-		exit 1
+		if [[ $1 =~ [a-zA-Z]+$ ]];
+		then
+			name=$1
+			if [[ $2 =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]];
+			then
+				ip=$2
+			else
+				echo "$red""ERR: Please check your input.$reset"
+				usage;
+				exit 1
+			fi
+		else
+			echo "$red""ERR: Please check your input.$reset"
+			usage;
+			exit 1
+		fi
 	fi
-fi
+	echo "$green""IP and Name is correct."
+	echo "ip: $ip"
+	echo "name: $name"
+	echo "$reset"
 
-echo "$green""IP and Name is correct."
-echo "ip: $ip"
-echo "name: $name"
-echo "$reset"
+	## check if machine is reachable
+	ping -c 1 $ip -W 1 >/dev/null && : || (echo "$red""Host seems to be down, please check your vpn connection.$reset"; prompt_continue;)
+}
 
-## check if machine is reachable
-ping -c 1 $ip -W 1 >/dev/null && : || (echo "$red""Host seems to be down, please check your vpn connection.$reset"; prompt_continue;)
+function load_dependencies {
+	echo "$blue""Downloading dependencies...$reset"
+	## downloading enumeration dependencies
+	  ## ffuf
+	wget -O "/tmp/subdomains.txt" https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/subdomains-top1million-20000.txt >/dev/null 2>&1
+	  ## gobuster
+	wget -O "/tmp/directories.txt" https://raw.githubusercontent.com/daviddias/node-dirbuster/master/lists/directory-list-2.3-medium.txt >/dev/null 2>&1
+}
 
+function add_to_hosts {
+	## add to hosts file
+	sed "/$ip/d" /etc/hosts | sudo tee /etc/hosts > /dev/null;
+	sed "/$name/d" /etc/hosts | sudo tee /etc/hosts > /dev/null;
+	echo -e $ip"\t"$name".htb" | sudo tee -a /etc/hosts > /dev/null;
+}
 
-## add to hosts file
-sed "/$ip/d" /etc/hosts | sudo tee /etc/hosts > /dev/null;
-sed "/$name/d" /etc/hosts | sudo tee /etc/hosts > /dev/null;
-echo -e $ip"\t"$name".htb" | sudo tee -a /etc/hosts > /dev/null;
+function create_working_dir {
+	## make directory on Desktop for new machine
+	echo "$red""Where do you want to save your output?$reset"
+	select script_path in "Home" "Desktop" "Documents" "Downloads"; do
+	    case $script_path in
+	        Home ) PATHSET="$HOME/";break;;
+	        Desktop ) PATHSET="$HOME/Desktop/";break;;
+	        Documents ) PATHSET="$HOME/Documents/";break;;
+	        Downloads ) PATHSET="$HOME/Downloads/";break;;
+	    esac
+	done
+	PATHSET="${PATHSET}$name";
+	mkdir $PATHSET > /dev/null 2>&1
+}
 
+## enum functions
 
-## make directory on Desktop for new machine
-echo "$red""Where do you want to save your output?$reset"
-select script_path in "Home" "Desktop" "Documents" "Downloads"; do
-    case $script_path in
-        Home ) PATHSET="$HOME/";break;;
-        Desktop ) PATHSET="$HOME/Desktop/";break;;
-        Documents ) PATHSET="$HOME/Documents/";break;;
-        Downloads ) PATHSET="$HOME/Downloads/";break;;
-    esac
-done
-PATHSET="${PATHSET}$name";
-mkdir $PATHSET > /dev/null 2>&1
+function net_scan {
+	sudo nmap -sS -sV -sC $ip -oN $PATHSET/nmap.txt > /dev/null && echo -e "$green""\n════════════════════════════════════╣ PORTS & SERVICES ╠════════════════════════════════════\n$reset" && 
+	cat $PATHSET/nmap.txt
+}
 
-echo "$blue""Downloading dependencies...$reset"
-## downloading enumeration dependencies
-  ## ffuf
-wget -O "/tmp/subdomains.txt" https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/subdomains-top1million-20000.txt >/dev/null 2>&1
-page_size=$(curl -so /dev/null "http://"$name".htb/" -w '%{size_download}')
-  ## gobuster
-wget -O "/tmp/directories.txt" https://raw.githubusercontent.com/daviddias/node-dirbuster/master/lists/directory-list-2.3-medium.txt >/dev/null 2>&1
-
-
-## Enumerating with different tools and scripts
-function add_subs {
-    SUBS=$(grep -w "http://$name.htb/ |" $PATHSET/subdomains.md | cut -d " " -f4 | sed "s/$/."$name".htb/" | tr '\n' ' ')
+function subdomain_scan {
+	function add_subs {	
+    SUBS=$(grep -w "$1://$name.htb/ |" $PATHSET/$2subdomains.md | cut -d " " -f4 | sed "s/$/."$name".htb/" | tr '\n' ' ')
     sudo sed -i "s/$name.htb/$name.htb $SUBS/" /etc/hosts
     echo "$green""subs added to /etc/hosts: "$SUBS$reset
+   	}
+
+	page_size=$(curl -so /dev/null "$1://"$name".htb:$2/" -w '%{size_download}')
+	ffuf -w /tmp/subdomains.txt -u "$1://"$name".htb:$2/" -H "Host: FUZZ."$name".htb" -fs $page_size -s -o $PATHSET/$2subdomains.md -of md >/dev/null 2>&1 &&
+	echo -e "$green""\n════════════════════════════════════╣ SUBDOMAINS ╠════════════════════════════════════\n$reset" && cat $PATHSET/$2subdomains.md &&
+	add_subs $*;
+}
+
+function dir_file_scan {
+
+	for i in $1
+	do
+		gobuster dir -w /tmp/directories.txt -u "$1://"$name".htb:$2/" -t 200 -x php,html,txt -o $PATHSET/$2directories_n_files.txt  >/dev/null 2>&1 &&
+		echo -e "$green""\n════════════════════════════════════╣ DIRECTORIES & FILES on $i╠════════════════════════════════════\n$reset" &&
+		cat $PATHSET/$2directories_n_files.txt
+	done
+
 }
 
 
+
+function run_scanner {
+	## gen portmap
+	sudo nmap $ip -sV -oN $PATHSET/qnmap.txt > /dev/null 
+	declare -A portmap
+	ports=($(awk -F '/tcp' '{print $1,$2}' $PATHSET/qnmap.txt | grep open | awk '{print $1}'))
+	protocols=($(awk -F '/tcp' '{print $1,$2}' $PATHSET/qnmap.txt | grep open | awk '{print $3}'))
+	for i in "${!ports[@]}"
+	do
+	 portmap[${ports[i]}]=${protocols[i]}
+	done
+
+
+	http=()
+	https=()
+	#protocol X
+	for i in "${!portmap[@]}"
+	do
+		case ${portmap[$i]} in
+			"http")
+				http=(${http[@]} $i)
+				;;
+			"https"|"ssl/http")
+				https=(${https[@]} $i)
+				;;
+			#protocol X)
+		esac
+	done
+	for value in "${http[@]}"
+	do
+		echo "ein http port"
+	    echo $value
+	done
+		for value in "${https[@]}"
+	do
+		echo "ein https port"
+	    echo $value
+	done
+	## general
+	net_scan &
+
+	## on http 
+	subdomain_scan "http" $http &
+	dir_file_scan "http" $http &
+
+	## on https
+	#subdomain_scan "https" $https & #still issues with size filter
+	dir_file_scan "https" $https
+
+	## on protocol X
+
+	wait $(jobs -p)
+}
+
+
+## run part
+
+check_usage $*;
+load_dependencies;
+create_working_dir;
+add_to_hosts;
+
+## Enum
+
 echo "$blue""Enumerating...$reset"
-(sudo nmap -sS -sV -sC $ip -oN $PATHSET/nmap.txt > /dev/null && echo -e "$green""\n════════════════════════════════════╣ PORTS AND SERVICES ╠════════════════════════════════════\n$reset" && cat $PATHSET/nmap.txt) &
-(ffuf -w /tmp/subdomains.txt -u "http://"$name".htb/" -H "Host: FUZZ."$name".htb" -fs $page_size -s -o $PATHSET/subdomains.md -of md >/dev/null 2>&1 && echo -e "$green""\n════════════════════════════════════╣ SUBDOMAINS ╠════════════════════════════════════\n$reset" && cat $PATHSET/subdomains.md && add_subs;) &
-(gobuster dir -w /tmp/directories.txt -u "http://"$name".htb/" -t 200 -x php,html -o $PATHSET/directories_n_files.txt  >/dev/null 2>&1 && echo -e "$green""\n════════════════════════════════════╣ DIRECTORIES & FILES ╠════════════════════════════════════\n$reset" && cat $PATHSET/directories_n_files.txt)
+run_scanner;
 
-
-wait $(jobs -p)
-
-## deleting temporary files
+## Aftermath
+	## deleting temporary files
 rm -f "/tmp/subdomains.txt"
 rm -f "/tmp/directories.txt"
 
 echo -e "$red""\n\ndone$reset"
-
-# alias htb='/home/kali/Desktop/htb_init.sh'
