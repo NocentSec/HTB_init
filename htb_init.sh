@@ -1,4 +1,11 @@
 #!/bin/bash
+###################################################################
+#Script Name	:WorkingTitle: htb_init.sh
+#Description	:This script enumerates HTB machines by using various tools.
+#Args           :<ip> <name>
+#Author       	:NocentSec (https://github.com/NocentSec)
+#Email         	:contact@nocent.xyz
+###################################################################
 
 ## CONFIG uncomment as desired
 
