@@ -145,6 +145,15 @@ function dir_file_scan {
 
 }
 
+function smb_enumeration {
+	for i in $1
+	do
+		smbclient --no-pass -L $ip -p $i > $PATHSET/$2samba.txt &&
+		echo -e "$green""\n════════════════════════════════════╣ SMB NULL USER ON PORT $1 ╠════════════════════════════════════\n$reset" &&
+		cat $PATHSET/$2samba.txt
+	done
+}
+
 
 function run_scanner {
 	## gen portmap
@@ -160,6 +169,7 @@ function run_scanner {
 
 	http=()
 	https=()
+	smb=()
 	#protocol X
 	for i in "${!portmap[@]}"
 	do
@@ -169,6 +179,9 @@ function run_scanner {
 				;;
 			"https"|"ssl/http")
 				https=(${https[@]} $i)
+				;;
+			"microsoft-ds")
+				smb=(${smb[@]} $i)
 				;;
 			#protocol X)
 		esac
@@ -198,7 +211,11 @@ function run_scanner {
 
 	## on https
 	subdomain_scan "https" $https &
-	dir_file_scan "https" $https $dir_threads
+	dir_file_scan "https" $https $dir_threads &
+
+	## on smb
+	smb_enumeration $smb
+
 
 	## on protocol X
 
