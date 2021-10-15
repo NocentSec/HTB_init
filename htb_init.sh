@@ -120,10 +120,11 @@ function net_scan {
 
 function subdomain_scan {
 
-	for i in $1
+	local -n subports=$2
+	for i in "${subports[@]}"
 	do
 		function add_subs {	
-		SUBS=$(grep -w "$1://$name.htb:$2/ |" $PATHSET/$2subdomains.md | cut -d " " -f4 | sed "s/$/."$name".htb/" | tr '\n' ' ')
+		SUBS=$(grep -w "$1://$name.htb:$i/ |" $PATHSET/${i}subdomains.md | cut -d " " -f4 | sed "s/$/."$name".htb/" | tr '\n' ' ')
 		sudo sed -i "s/$name.htb/$name.htb $SUBS/" /etc/hosts
 		if [ -z "$SUBS" ]
 		then
@@ -133,31 +134,32 @@ function subdomain_scan {
 		fi
 		}
 
-		ffuf -w /tmp/subdomains.txt -u "$1://"$name".htb:$2/" -H "Host: FUZZ."$name".htb" -ac -s -o $PATHSET/$2subdomains.md -of md >/dev/null 2>&1 &&
-		#fw=$(cat $PATHSET/$2subdomains.md | grep "$1://"$name".htb:$2/" | cut -d ' ' -f18 | sort | uniq -c | sort -nr | head -n1 | cut -d ' ' -f4) &&
-		#cat $PATHSET/$2subdomains.md | grep -v "$fw" > $PATHSET/$2subdomains_open.md &&
-		echo -e "$green""\n════════════════════════════════════╣ SUBDOMAINS ON PORT $2 ╠════════════════════════════════════\n$reset" && tail -n +8 $PATHSET/$2subdomains.md &&
+		ffuf -w /tmp/subdomains.txt -u "$1://"$name".htb:$i/" -H "Host: FUZZ."$name".htb" -ac -s -o "$PATHSET/$i""subdomains.md" -of md >/dev/null 2>&1 &&
+		echo -e "$green""\n════════════════════════════════════╣ SUBDOMAINS ON PORT $i ╠════════════════════════════════════\n$reset" && tail -n +8 "$PATHSET/$i""subdomains.md" &&
 		add_subs $*;
 	done
 }
 
 function dir_file_scan {
 
-	for i in $1
+	local -n dirports=$2
+	for i in "${dirports[@]}"
 	do
-		gobuster dir -w /tmp/directories.txt -u "$1://"$name".htb:$2/" -t $3 -x php,html,txt -o $PATHSET/$2directories_n_files.txt >/dev/null 2>&1 &&
-		echo -e "$green""\n════════════════════════════════════╣ DIRECTORIES & FILES ON PORT $2 ╠════════════════════════════════════\n$reset" &&
-		cat $PATHSET/$2directories_n_files.txt
+		gobuster dir -w /tmp/directories.txt -u "$1://"$name".htb:$i/" -t $3 -x php,html,txt -b 404,502 -o "$PATHSET/$i""directories_n_files.txt" >/dev/null 2>&1 &&
+		echo -e "$green""\n════════════════════════════════════╣ DIRECTORIES & FILES ON PORT $i ╠════════════════════════════════════\n$reset" &&
+		cat "$PATHSET/"$i"directories_n_files.txt"
 	done
 
 }
 
 function smb_enumeration {
-	for i in $1
+
+	local -n smbports=$1
+	for i in "${smbports[@]}"
 	do
-		smbclient --no-pass -L $ip -p $i > $PATHSET/$2samba.txt &&
+		smbclient --no-pass -L $ip -p $i > "$PATHSET/$i""samba.txt" &&
 		echo -e "$green""\n════════════════════════════════════╣ SMB NULL USER ON PORT $1 ╠════════════════════════════════════\n$reset" &&
-		cat $PATHSET/$2samba.txt
+		cat "$PATHSET/$i""samba.txt"
 	done
 }
 
@@ -193,18 +195,7 @@ function run_scanner {
 			#protocol X)
 		esac
 	done
-	: '
-	for value in "${http[@]}"
-	do
-		echo "ein http port"
-	    echo $value
-	done
-		for value in "${https[@]}"
-	do
-		echo "ein https port"
-	    echo $value
-	done
-	'
+
 	## calculate threads to use for directory enumeration, 200/num ports
 	dir_threads=1;
 	((dir_threads = 200 / (("${#http[@]}" + "${#https[@]}"))))
@@ -213,15 +204,15 @@ function run_scanner {
 	net_scan &
 
 	## on http 
-	subdomain_scan "http" $http &
-	dir_file_scan "http" $http $dir_threads &
+	subdomain_scan "http" http &
+	dir_file_scan "http" http $dir_threads &
 
 	## on https
-	subdomain_scan "https" $https &
-	dir_file_scan "https" $https $dir_threads &
+	subdomain_scan "https" https &
+	dir_file_scan "https" https $dir_threads &
 
 	## on smb
-	smb_enumeration $smb
+	smb_enumeration smb
 
 
 	## on protocol X
