@@ -37,7 +37,7 @@ function prompt_continue {
 	read -p "Do you want to continue anyways? [Y/n] " yn
     case $yn in
         [Yy]* ) :;;
-        * ) echo "Abort.";exit 1;;
+        * ) echo "[-]Abort.";exit 1;;
     esac
 }
 
@@ -48,7 +48,7 @@ function check_usage {
 	[ -z $1 ] && { usage; }
 
 	## check internet connection
-	ping -c 1 1.1.1.1 -W 1 >/dev/null && : || (echo -e "$red""Network problems, please check your internet connection.$reset"; prompt_continue;)
+	ping -c 1 1.1.1.1 -W 1 >/dev/null && : || (echo -e "$red""[-]Network problems, please check your internet connection.$reset"; prompt_continue;)
 
 
 	## check if valid ip and name
@@ -59,7 +59,7 @@ function check_usage {
 		then
 			name=$2
 		else
-			echo "$red""ERR: Please check your input.$reset"
+			echo "$red""[-]ERR: Please check your input.$reset"
 			usage;
 			exit 1
 		fi
@@ -71,12 +71,12 @@ function check_usage {
 			then
 				ip=$2
 			else
-				echo "$red""ERR: Please check your input.$reset"
+				echo "$red""[-]ERR: Please check your input.$reset"
 				usage;
 				exit 1
 			fi
 		else
-			echo "$red""ERR: Please check your input.$reset"
+			echo "$red""[-]ERR: Please check your input.$reset"
 			usage;
 			exit 1
 		fi
@@ -86,11 +86,11 @@ function check_usage {
 	echo "IP: $ip""$reset"
 
 	## check if machine is reachable
-	ping -c 1 $ip -W 1 >/dev/null && : || (echo "$red""Host seems to be down, please check your vpn connection.$reset"; prompt_continue;)
+	ping -c 1 $ip -W 1 >/dev/null && : || (echo "$red""[-]Host seems to be down, please check your vpn connection.$reset"; prompt_continue;)
 }
 
 function load_dependencies {
-	echo "$blue""Downloading dependencies...$reset"
+	echo "$blue""[+]Downloading dependencies$reset"
 	## downloading enumeration dependencies
 	  ## ffuf
 	wget -O "/tmp/subdomains.txt" https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/DNS/subdomains-top1million-20000.txt >/dev/null 2>&1
@@ -128,9 +128,9 @@ function subdomain_scan {
 		sudo sed -i "s/$name.htb/$name.htb $SUBS/" /etc/hosts
 		if [ -z "$SUBS" ]
 		then
-			echo "$red""No subdomains found.$reset"
+			echo "$red""[-]No subdomains found.$reset"
 		else
-			echo "$green""subs added to /etc/hosts: $SUBS$reset"
+			echo "$green""[+]subs added to /etc/hosts: $SUBS$reset"
 		fi
 		}
 
@@ -212,8 +212,8 @@ function run_scanner {
 	dir_file_scan "https" https $dir_threads &
 
 	## on smb
-	smb_enumeration smb
-
+	smb_enumeration smb &
+	echo "$green""[+]Enumerating$reset"
 
 	## on protocol X
 
@@ -230,7 +230,7 @@ add_to_hosts;
 
 ## Enum
 
-echo "$blue""Enumerating...$reset"
+echo "$blue""[+]Starting Initial Portscan$reset"
 run_scanner;
 
 ## Aftermath
