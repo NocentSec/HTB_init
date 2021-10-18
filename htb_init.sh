@@ -134,7 +134,7 @@ function subdomain_scan {
 		fi
 		}
 
-		ffuf -w /tmp/subdomains.txt -u "$1://"$name".htb:$i/" -H "Host: FUZZ."$name".htb" -ac -s -o "$PATHSET/$i""subdomains.md" -of md >/dev/null 2>&1 &&
+		ffuf -w /tmp/subdomains.txt -u "$1://"$name".htb:$i/" -H "Host: FUZZ."$name".htb" -ac -s -t $3 -o "$PATHSET/$i""subdomains.md" -of md >/dev/null 2>&1 &&
 		echo -e "$green""\n════════════════════════════════════╣ SUBDOMAINS ON PORT $i ╠════════════════════════════════════\n$reset" && tail -n +8 "$PATHSET/$i""subdomains.md" &&
 		add_subs $*;
 	done
@@ -197,19 +197,19 @@ function run_scanner {
 	done
 
 	## calculate threads to use for directory enumeration, 200/num ports
-	dir_threads=1;
-	((dir_threads = 200 / (("${#http[@]}" + "${#https[@]}"))))
+	max_threads=1;
+	((max_threads = 200 / (("${#http[@]}" + "${#https[@]}"))))
 
 	## general
 	net_scan &
 
 	## on http 
-	subdomain_scan "http" http &
-	dir_file_scan "http" http $dir_threads &
+	subdomain_scan "http" http $max_threads &
+	dir_file_scan "http" http $max_threads &
 
 	## on https
-	subdomain_scan "https" https &
-	dir_file_scan "https" https $dir_threads &
+	subdomain_scan "https" https $max_threads &
+	dir_file_scan "https" https $max_threads &
 
 	## on smb
 	smb_enumeration smb &
