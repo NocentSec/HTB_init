@@ -166,7 +166,9 @@ function smb_enumeration {
 
 function run_scanner {
 	## gen portmap
-	sudo nmap $ip -sV -oN $PATHSET/qnmap.txt > /dev/null 
+	sudo nmap $ip -sV -oN $PATHSET/qnmap.txt > /dev/null &&
+	echo -e "$green""\n[+]Initial Scan Results\n$reset" &&
+	tail -n +5 $PATHSET/qnmap.txt | head -n -3
 	declare -A portmap
 	ports=($(awk -F '/tcp' '{print $1,$2}' $PATHSET/qnmap.txt | grep open | awk '{print $1}'))
 	protocols=($(awk -F '/tcp' '{print $1,$2}' $PATHSET/qnmap.txt | grep open | awk '{print $3}'))
@@ -213,7 +215,7 @@ function run_scanner {
 
 	## on smb
 	smb_enumeration smb &
-	echo "$green""[+]Enumerating$reset"
+	echo -e "$green""\n[+]Enumerating$reset"
 
 	## on protocol X
 
@@ -235,6 +237,7 @@ run_scanner;
 
 ## Aftermath
 	## deleting temporary files
+echo -e "$green""\n[+]Cleaning Up$reset"
 rm -f "/tmp/subdomains.txt"
 rm -f "/tmp/directories.txt"
 
