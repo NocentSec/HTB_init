@@ -145,9 +145,11 @@ function dir_file_scan {
     for i in "${dirports[@]}"
 	do
     	if [[ $i = "80" ]] && go_port="" || go_port=":${i}"
-        gobuster dir -w /tmp/directories.txt -u "$1://"$name".htb:$go_port/" -t $3 -x php,html,txt -b 404,502 -o "$PATHSET/$i""directories_n_files.txt" >/dev/null 2>&1 &&
-        echo -e "$green""\n════════════════════════════════════╣ DIRECTORIES & FILES ON PORT $i ╠════════════════════════════════════\n$reset" &&
-        cat "$PATHSET/"$i"directories_n_files.txt" | sort -k2
+		then
+			gobuster dir -w /tmp/directories.txt -u "$1://"$name".htb:$go_port/" -t $3 -x php,html,txt -b 404,502 -o "$PATHSET/$i""directories_n_files.txt" >/dev/null 2>&1 &&
+			echo -e "$green""\n════════════════════════════════════╣ DIRECTORIES & FILES ON PORT $i ╠════════════════════════════════════\n$reset" &&
+			cat "$PATHSET/"$i"directories_n_files.txt" | sort -k2
+		fi
     done
 }
 
@@ -187,7 +189,7 @@ function run_scanner {
 			"http")
 				http=(${http[@]} $i)
 				;;
-			"https"|"ssl/http")
+			"https"|"ssl/http"|"ssl/https")
 				https=(${https[@]} $i)
 				;;
 			"microsoft-ds")
